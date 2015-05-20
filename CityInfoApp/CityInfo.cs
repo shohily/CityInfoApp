@@ -18,60 +18,99 @@ namespace CityInfoApp
             InitializeComponent();
         }
 
-         string connectionstring = @"server=RAKIB-PC;database=DBCityInfo;integrated security=true";
+        string connectionstring = @"server=RAKIB-PC;database=DBCityInfo;integrated security=true";
         City aCity=new City();
-        bool checkCountry = false, checkCity = false;
+        private bool checkCountry = false, checkCity = false;
+        private bool isUpdateMode = false;
+        private int cSerialNO;
         private void saveButton_Click(object sender, EventArgs e)
         {
             aCity.cityName = cityNameTextBox.Text;
             aCity.about = aboutTextBox.Text;
             aCity.country = countryTextBox.Text;
 
-
-            if (aCity.cityName.Length >= 4)
+            if (isUpdateMode)
             {
-                if (IsCityNameExists(aCity.cityName))
-                {
-                    MessageBox.Show("City Name Is Already Exists!");
-                    return;
-                }
-                SqlConnection aConnection = new SqlConnection(connectionstring);
+                SqlConnection connection = new SqlConnection(connectionstring);
 
-                aConnection.Open();
+                string query = "UPDATE CityInfo_Table SET About ='" + aCity.about + "', Country ='" + aCity.country + "' WHERE SerialNo = '" + cSerialNO + "'";
 
-                string query = "INSERT INTO Table_CityInfo VALUES('" + aCity.cityName + "','" + aCity.about + "','" + aCity.country + "')";
 
-                SqlCommand command = new SqlCommand(query, aConnection);
+                SqlCommand command = new SqlCommand(query, connection);
 
+                connection.Open();
                 int rowAffected = command.ExecuteNonQuery();
-                aConnection.Close();
+                connection.Close();
+
+
+
+                //4. see result
 
                 if (rowAffected > 0)
                 {
-                    MessageBox.Show("Inserted Successfully!");
+                    MessageBox.Show("Updated Successfully!");
+
+                    saveButton.Text = "Save";
+                    cSerialNO = 0;
+                    isUpdateMode = false;
+                    cityNameTextBox.Enabled = true;
                     ShowAllInfo();
+
                 }
                 else
                 {
-                    MessageBox.Show("Insertion Failed!");
+                    MessageBox.Show("Update Failed!");
                 }
-                //cityNameTextBox.Text = "";
-                //aboutTextBox.Text = "";
-                //countryTextBox.Text = "";
             }
 
             else
             {
+                if (aCity.cityName.Length >= 4)
+                {
+                    if (IsCityNameExists(aCity.cityName))
+                    {
+                        MessageBox.Show("City Name Is Already Exists!");
+                        return;
+                    }
+                    SqlConnection aConnection = new SqlConnection(connectionstring);
 
-                MessageBox.Show("City Name must be at least 4 character!");
+                    aConnection.Open();
+
+                    string query = "INSERT INTO CityInfo_Table VALUES('" + aCity.cityName + "','" + aCity.about + "','" + aCity.country + "')";
+
+                    SqlCommand command = new SqlCommand(query, aConnection);
+
+                    int rowAffected = command.ExecuteNonQuery();
+                    aConnection.Close();
+
+                    if (rowAffected > 0)
+                    {
+                        MessageBox.Show("Inserted Successfully!");
+                        ShowAllInfo();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Insertion Failed!");
+                    }
+                    //cityNameTextBox.Text = "";
+                    //aboutTextBox.Text = "";
+                    //countryTextBox.Text = "";
+                }
+
+                else
+                {
+
+                    MessageBox.Show("City Name must be at least 4 character!");
+                }
             }
+            
         }
 
         public bool IsCityNameExists(string cityName)
         {
             SqlConnection aConnection = new SqlConnection(connectionstring);
 
-            string query = " SELECT * From Table_CityInfo WHERE CityName= '" + cityName + "'";
+            string query = " SELECT * From CityInfo_Table WHERE CityName= '" + cityName + "'";
 
             SqlCommand command = new SqlCommand(query, aConnection);
             aConnection.Open();
@@ -95,7 +134,7 @@ namespace CityInfoApp
         public void ShowAllInfo()
         {
               SqlConnection connection = new SqlConnection(connectionstring);
-              string query = "SELECT * FROM Table_CityInfo";
+              string query = "SELECT * FROM CityInfo_Table";
             SqlCommand command = new SqlCommand(query, connection);
             connection.Open();
             SqlDataReader reader = command.ExecuteReader();
@@ -140,8 +179,49 @@ namespace CityInfoApp
         private void cityListView_DoubleClick(object sender, EventArgs e)
         {
             ListViewItem item = cityListView.SelectedItems[0];
-            
+            int serialNo = Convert.ToInt16(item.Text.ToString());
+            City aCity = GetCityInfoBySerialNo(serialNo);
+            if (aCity != null)
+            {
+                isUpdateMode = true;
+
+                saveButton.Text = "Update";
+                cSerialNO = aCity.serialNo;
+                cityNameTextBox.Enabled = false;
+
+                cityNameTextBox.Text = aCity.cityName;
+                aboutTextBox.Text = aCity.about;
+                countryTextBox.Text = aCity.country;
+            }
+
+
         }
+
+        public City GetCityInfoBySerialNo(int serialNo)
+        {
+            SqlConnection connection = new SqlConnection(connectionstring);
+            string query = "SELECT * FROM CityInfo_Table WHERE SerialNo='"+serialNo+"'";
+            SqlCommand command = new SqlCommand(query, connection);
+            connection.Open();
+            SqlDataReader reader = command.ExecuteReader();
+            List<City> cityList = new List<City>();
+            while (reader.Read())
+            {
+                City city = new City();
+                city.serialNo = int.Parse(reader["SerialNo"].ToString());
+                city.cityName = reader["CityName"].ToString();
+                city.about = reader["About"].ToString();
+                city.country = reader["Country"].ToString();
+
+                cityList.Add(city);
+
+            }
+            reader.Close();
+            connection.Close();
+            return cityList.FirstOrDefault();
+        }
+
+        
 
         private void cityRadioButton_CheckedChanged(object sender, EventArgs e)
         {
@@ -168,7 +248,7 @@ namespace CityInfoApp
             if (checkCity)
             {
                 SqlConnection connection = new SqlConnection(connectionstring);
-                string query = "SELECT * FROM Table_CityInfo";
+                string query = "SELECT * FROM CityInfo_Table";
                 SqlCommand command = new SqlCommand(query, connection);
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();
@@ -193,7 +273,7 @@ namespace CityInfoApp
             else
             {
                 SqlConnection connection = new SqlConnection(connectionstring);
-                string query = "SELECT * FROM Table_CityInfo";
+                string query = "SELECT * FROM CityInfo_Table";
                 SqlCommand command = new SqlCommand(query, connection);
                 connection.Open();
                 SqlDataReader reader = command.ExecuteReader();
